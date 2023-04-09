@@ -211,7 +211,7 @@ class Trainer():
             print(f"Test Loss: {running_loss_test/num_test}")
             print(f"Test Accuracy Metric: {test_metrics['accuracy']} ")   
             
-            with open(self.test_output_dir + 'submission.txt', 'w') as f:
+            with open(os.path.join(self.test_output_dir , 'submission.txt'), 'w') as f:
                 for x, y in zip(test_image_ids, test_predictions):
                     f.write(f"{x},{y}'\n'")
                 f.seek(f.tell() - 1)
