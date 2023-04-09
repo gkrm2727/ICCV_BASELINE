@@ -53,7 +53,7 @@ class IMAGENET100_test(Dataset):
     def __len__(self):
         return len(self.img_paths)
     def __getitem__(self,index):
-        image_id = self.img_paths[index].split('/')[-1].split('.')[0]
+        image_id = self.img_paths[index].split('\\')[-1].split('.')[0]
         path = self.img_paths[index]
         image = Image.open(path).convert('RGB')
         if self.transform is not None:
@@ -212,13 +212,17 @@ class Trainer():
                 test_predictions = np.concatenate((test_predictions,preds.detach().cpu().numpy()))
             
             with open(os.path.join(self.test_output_dir , 'submission.txt'), 'w') as f:
-                for x, y in zip(test_image_ids, test_predictions):
-                    f.write(f"{x},{y}'\n'")
+                for x, y in zip(test_image_ids[:-1], test_predictions[:-1]):
+                    f.write(f'{x},{int(y)}\n')
+                f.write(f'{test_image_ids[-1]},{int(test_predictions[-1])}')
                 f.seek(f.tell() - 1)
                 f.truncate()
             
             f.close()
-            
+            pd.DataFrame({
+                'image_id':test_image_ids,
+                'class':test_predictions
+            }).to_csv(os.path.join(self.test_output_dir , 'submission.csv'))
 
     def run(self,run_test=True):
         best_validation_loss = float('inf')
@@ -247,7 +251,7 @@ if __name__ == '__main__':
     parser.add_argument('--root_dir',default='./',type=str)
     parser.add_argument('--epochs',default=2,type=int)
     parser.add_argument('--batch_size',default=32,type=int)
-    parser.add_argument('--image_size',default=224,type=int)
+    parser.add_argument('--image_size',default=160,type=int)
     parser.add_argument('--seed',default=42,type=int)
     parser.add_argument('--num_classes',default=100,type=int)
     parser.add_argument('--num_workers',default=2,type=int)
@@ -277,7 +281,7 @@ if __name__ == '__main__':
 
     train_df = pd.read_csv(os.path.join(ROOT_DIR,'train.csv'))
     val_df = pd.read_csv(os.path.join(ROOT_DIR,'val.csv'))
-    test_files = glob(f'{ROOT_DIR}/test/*')
+    test_files = glob(f'{ROOT_DIR}\\test\\*')
 
     train_dataset = IMAGENET100(train_df,os.path.join(ROOT_DIR,"train"),transform)
     val_dataset = IMAGENET100(val_df,os.path.join(ROOT_DIR,"val"),transform)
