@@ -13,7 +13,7 @@ from sklearn import metrics
 import torch.optim as optim
 from tqdm import tqdm
 from timm.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
-
+from glob import glob
 
 
 def seed_everything(seed):
@@ -46,6 +46,20 @@ class IMAGENET100(Dataset):
         if self.transform is not None:
             image = self.transform(image)
         return image, torch.tensor(label)
+    
+class IMAGENET100_test(Dataset):    
+    def __init__(self,img_paths,transform=None):
+        self.img_paths = img_paths
+        self.transform = transform
+    def __len__(self):
+        return len(self.img_paths)
+    def __getitem__(self,index):
+        image_id = self.img_paths[index].split('/')[-1].split('.')[0]
+        path = self.img_paths[index]
+        image = Image.open(path).convert('RGB')
+        if self.transform is not None:
+            image = self.transform(image)
+        return image,image_id
 
 class BaselineModel(nn.Module):
     def __init__(self,num_classes,pretrained=False):
@@ -186,30 +200,17 @@ class Trainer():
                 'accuracy': val_metrics['accuracy'],
             }
     def test_step(self):
+        test_image_ids = np.array([])
         test_predictions = np.array([])
-        test_labels = np.array([])
-        running_loss_test = 0.0
-        num_test = 0
         self.model.eval()
         with torch.no_grad():
             print("Test Loop!")
-            for images,labels in tqdm(self.test_loader):
+            for images,image_ids in tqdm(self.test_loader):
                 images = images.to(self.accelarator)
-                labels = labels.to(self.accelarator)
-
                 outputs = self.model(images)
-                num_test += labels.shape[0]
                 _,preds = torch.max(outputs,1)
+                test_image_ids = np.concatenate((test_image_ids,image_ids))
                 test_predictions = np.concatenate((test_predictions,preds.detach().cpu().numpy()))
-                test_labels = np.concatenate((test_labels,labels.detach().cpu().numpy()))
-
-
-                loss = self.criterion(outputs,labels)
-                running_loss_test += loss.item()
-            test_metrics = self.get_metrics(test_predictions,test_labels)
-            test_image_ids = list(self.test_dataset.df['image_id'])
-            print(f"Test Loss: {running_loss_test/num_test}")
-            print(f"Test Accuracy Metric: {test_metrics['accuracy']} ")   
             
             with open(os.path.join(self.test_output_dir , 'submission.txt'), 'w') as f:
                 for x, y in zip(test_image_ids, test_predictions):
@@ -219,10 +220,6 @@ class Trainer():
             
             f.close()
             
-            return {
-                'loss': running_loss_test/num_test,
-                'accuracy': test_metrics['accuracy'],
-            }
 
     def run(self,run_test=True):
         best_validation_loss = float('inf')
@@ -282,11 +279,11 @@ if __name__ == '__main__':
     
     train_df = pd.read_csv(os.path.join(ROOT_DIR,'train.csv'))
     val_df = pd.read_csv(os.path.join(ROOT_DIR,'val.csv'))
-    test_df = pd.read_csv(os.path.join(ROOT_DIR,'test.csv'))
+    test_files = glob(f'{ROOT_DIR}/test/*')
 
     train_dataset = IMAGENET100(train_df,ROOT_DIR,transform)
     val_dataset = IMAGENET100(val_df,ROOT_DIR,transform)
-    test_dataset = IMAGENET100(test_df,ROOT_DIR,transform)
+    test_dataset = IMAGENET100_test(test_files,transform)
 
 
     trainer = Trainer(
