@@ -15,7 +15,6 @@ from tqdm import tqdm
 from timm.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 from glob import glob
 
-
 def seed_everything(seed):
     np.random.seed(seed)
     random.seed(seed)
@@ -241,8 +240,7 @@ class Trainer():
         return {
             'best_accuracy':best_validation_accuracy,
             'best_loss': best_validation_loss,
-        }
-    
+        }    
     
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Arguments for training baseline on ImageNet100")
@@ -267,24 +265,23 @@ if __name__ == '__main__':
     DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     seed_everything(SEED)
-    model = BaselineModel(NUM_CLASSES,pretrained=True)
+    model = BaselineModel(NUM_CLASSES)
     model.to(DEVICE)
 
     for param in model.parameters():
         param.requires_grad = True
 
     transform = get_transform(IMAGE_SIZE,
-                               IMAGENET_DEFAULT_MEAN,
-                               IMAGENET_DEFAULT_STD)
-    
+                            IMAGENET_DEFAULT_MEAN,
+                            IMAGENET_DEFAULT_STD)
+
     train_df = pd.read_csv(os.path.join(ROOT_DIR,'train.csv'))
     val_df = pd.read_csv(os.path.join(ROOT_DIR,'val.csv'))
     test_files = glob(f'{ROOT_DIR}/test/*')
 
-    train_dataset = IMAGENET100(train_df,ROOT_DIR,transform)
-    val_dataset = IMAGENET100(val_df,ROOT_DIR,transform)
+    train_dataset = IMAGENET100(train_df,os.path.join(ROOT_DIR,"train"),transform)
+    val_dataset = IMAGENET100(val_df,os.path.join(ROOT_DIR,"val"),transform)
     test_dataset = IMAGENET100_test(test_files,transform)
-
 
     trainer = Trainer(
         train_dataset=train_dataset,
