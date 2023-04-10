@@ -275,7 +275,6 @@ if __name__ == '__main__':
         test_dataset=test_dataset,
         batch_size=BATCH_SIZE,
         num_workers=NUM_WORKERS,
-        num_classes=NUM_CLASSES,
         device=DEVICE,
         learning_rate=LEARNING_RATE,
         epochs=EPOCHS,
