@@ -69,18 +69,6 @@ class BaselineModel(nn.Module):
         return self.encoder(x)
 
 
-def get_metrics(predictions,actual,isTensor=False):
-    if isTensor:
-        p = predictions.detach().cpu().numpy()
-        a = actual.detach().cpu().numpy()
-    else:
-        p = predictions
-        a = actual
-    accuracy = metrics.accuracy_score(y_pred=p,y_true=a)
-    return {
-        "accuracy": accuracy
-    }
-
 class Trainer():
     def __init__(self,
                 train_dataset,
@@ -88,7 +76,6 @@ class Trainer():
                 test_dataset,
                 batch_size,
                 num_workers,
-                num_classes,
                 device,
                 learning_rate,
                 epochs,
@@ -96,7 +83,6 @@ class Trainer():
                 test_output_dir):
         
         self.epochs = epochs
-        self.num_classes = num_classes
         self.epoch = 0
         self.accelarator = device
         self.model = model
@@ -155,7 +141,6 @@ class Trainer():
             train_labels = np.concatenate((train_labels,labels.detach().cpu().numpy()))
 
             loss = self.criterion(outputs,labels)
-            l = loss.item()
             running_loss_train += loss.item()
             loss.backward()
             self.optimizer.step()
@@ -189,7 +174,6 @@ class Trainer():
 
 
                 loss = self.criterion(outputs,labels)
-                l = loss.item()
                 running_loss_val += loss.item()
             val_metrics = self.get_metrics(val_predictions,val_labels)
             print(f"Validation Loss: {running_loss_val/num_val}")
@@ -215,8 +199,6 @@ class Trainer():
                 for x, y in zip(test_image_ids[:-1], test_predictions[:-1]):
                     f.write(f'{x},{int(y)}\n')
                 f.write(f'{test_image_ids[-1]},{int(test_predictions[-1])}')
-                f.seek(f.tell() - 1)
-                f.truncate()
             
             f.close()
             pd.DataFrame({
